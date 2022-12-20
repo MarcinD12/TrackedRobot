@@ -9,6 +9,6 @@ Things to do:
 - Connection Radar to database (?)
 
 
-
 <br />
-![Alt text](https://github.com/MarcinD12/TrackedRobot/blob/master/IMG_20221013_184746.jpg?raw=true "Optional Title")
+<br />
+![app](https://github.com/MarcinD12/TrackedRobot/blob/master/IMG_20221013_184746.jpg?raw=true "photo")
