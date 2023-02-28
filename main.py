@@ -1,29 +1,56 @@
 from machine import Pin, I2C, PWM
 from pico_i2c_lcd import I2cLcd   #https://github.com/T-622/RPI-PICO-I2C-LCD
 from hcsr04 import HCSR04    #https://github.com/gamegine/HCSR04-ultrasonic-sensor-lib
-# import network                  #https://docs.micropython.org/en/latest/esp8266/tutorial/network_basics.html
-# import socket
+from imu import MPU6050
 import time
 from radar import *
-#sta_if = network.WLAN(network.STA_IF)
-#sta_if.connect('Starlink1','wifipass')
-#print(sta_if.isconnected())
-#print(sta_if.ifconfig())
-#i2c config
+import network                  #https://docs.micropython.org/en/latest/esp8266/tutorial/network_basics.html
+import socket
+import urequests
+
+#ctrl+shift+p select debugger
+
+sta_if = network.WLAN(network.STA_IF)           #network connection
+sta_if.active(True)
+sta_if.connect('Starlink1','wifipass')
+print(sta_if.isconnected())
+print(sta_if.ifconfig())
+
 
 led = Pin("LED",Pin.OUT)
 
 i2c=I2C(id=1,scl=Pin(15),sda=Pin(14),freq=400000)       #display
 lcd=I2cLcd(i2c, 0x3f, 2, 16)
 
-leftMotorIn1=Pin(3,Pin.OUT)                         #motor driver
-leftMotorIn2=Pin(4,Pin.OUT)
-rightMotorIn1=Pin(5,Pin.OUT)
-rightMotorIn2=Pin(6,Pin.OUT)
-MotorPwm=PWM(Pin(2))
+
+
+
+
+#gyro
+#mpu = MPU6050(i2c)
+#print(round(mpu.accel.x,2))
+#print(mpu.accel)
+#xd = mpu.sensors
+#print(xd[0].z)
+
+#start = time.time()
+
+# while (time.time()<start+10):
+#     print(gyroRead.x)
+#     print(gyroRead.y)
+#     print(gyroRead.z)
+#     print("next")
+#     time.sleep_ms(1000)
+
+
+leftMotorIn1=Pin(12,Pin.OUT)                         #motor driver
+leftMotorIn2=Pin(11,Pin.OUT)
+rightMotorIn1=Pin(10,Pin.OUT)
+rightMotorIn2=Pin(9,Pin.OUT)
+MotorPwm=PWM(Pin(8))
 MotorPwm.freq(20)
 
-distanceSensor= HCSR04(trigger_pin=11,echo_pin=12)      #radar distance sensor
+distanceSensor= HCSR04(trigger_pin=7,echo_pin=6)      #radar distance sensor
 radarMeasure= list()
 
 def radar():
@@ -56,12 +83,6 @@ def servoTest():                #between 2500-8500
     servoPwm.deinit()
 
 
-
-
-
-#servo=PWM(Pin(13))
-#servo.freq(50)
-#distanceSensor= HCSR04(trigger_pin=17,echo_pin=16)
 
 
 """     Motor steering:
@@ -124,112 +145,34 @@ def drivesTest(timeOfMove):
     turnRight(timeOfMove)
     
 
+# power = 15000
+# moveForward(1)
+# moveBackward(1)
+# turnLeft(1)
+# turnRight(1)
+# moveStop()
+
+power=15000
+
+#program loop
+for i in range(1000):
     
-
-
-
-
-#moveForward(20000)
-power = 20000
-#turnLeft(1.5)
-#radarAngle=radar()
-radarAngle=radar()
-print(radarAngle)
-if(radarAngle!=6):
-    if(radarAngle>6):
-        turnLeft(1.5/13*radarAngle)
+    lcd.move_to(0,0)
+    request = urequests.get('apiip/robot/info')   
+    command = request.text
+    print(command+"        ")
+    lcd.putstr(str(command))
+    if command=="Forward":
+        moveForward(0.5)
+    elif command=="Backward":
+        moveBackward(0.5)
+    elif command=="Left":
+        turnLeft(0.5)
+    elif command=="Right":
+        turnRight(0.5)
     else:
-        (turnRight(1.5/13*radarAngle))  
-else:
-    moveForward(2)            
-      
-
-#moveStop()
-#moveBackward(1)
+        moveStop()
 
 
 
-######################### WEB CONTROLLING
 
-
-def connect():
-    #Connect to WLAN
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    wlan.connect('Starlink1', 'wifipass')
-    while wlan.isconnected() == False:
-        print('Waiting for connection...')
-        sleep(1)
-    ip = wlan.ifconfig()[0]
-    print(f'Connected on {ip}')
-    return ip
-
-def webpage():
-    #Template HTML
-    html = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-            <title>Zumo Robot Control</title>
-            </head>
-            <center><b>
-            <form action="./forward">
-            <input type="submit" value="Forward" style="height:120px; width:120px" />
-            </form>
-            <table><tr>
-            <td><form action="./left">
-            <input type="submit" value="Left" style="height:120px; width:120px" />
-            </form></td>
-            <td><form action="./stop">
-            <input type="submit" value="Stop" style="height:120px; width:120px" />
-            </form></td>
-            <td><form action="./right">
-            <input type="submit" value="Right" style="height:120px; width:120px" />
-            </form></td>
-            </tr></table>
-            <form action="./back">
-            <input type="submit" value="Back" style="height:120px; width:120px" />
-            </form>
-            </body>
-            </html>
-            """
-    return str(html)
-def serve(connection):
-    #Start web server
-    while True:
-        client = connection.accept()[0]
-        request = client.recv(1024)
-        request = str(request)
-        try:
-            request = request.split()[1]
-        except IndexError:
-            pass
-        if request == '/forward?':
-            moveForward(50000)
-        elif request =='/left?':
-            turnLeft(50000)
-        elif request =='/stop?':
-            moveStop()
-        elif request =='/right?':
-            turnRight(50000)
-        elif request =='/back?':
-            moveBackward(50000)
-        html = webpage()
-        client.send(html)
-        client.close()
-
-
-def open_socket(ip):
-    # Open a socket
-    address = (ip, 80)
-    connection = socket.socket()
-    connection.bind(address)
-    connection.listen(1)
-    return connection
-
-    # try:
-#     ip = connect()
-#     connection = open_socket(ip)
-#     serve(connection)
-# except KeyboardInterrupt:
-#     machine.reset()
