@@ -12,20 +12,20 @@ import network                  #https://docs.micropython.org/en/latest/esp8266/
 import urequests
 import ntptime
 import urequest
-
+import json
+import secrets
 #import urequests
 #ctrl+shift+p select debugger
 
   
 sta_if = network.WLAN(network.STA_IF)           #network connection
 sta_if.active(True)
-sta_if.connect('Starlink1','w8skcudsvkMc')
+sta_if.connect(secrets.SSID,secrets.PASSWORD)
 print(sta_if.isconnected())
 print(sta_if.ifconfig())
 
 
 led = Pin("LED",Pin.OUT)
-
 i2c=I2C(id=1,scl=Pin(15),sda=Pin(14),freq=400000)       #display
 lcd=I2cLcd(i2c, 0x3f, 2, 16)
 
@@ -40,16 +40,18 @@ MotorPwm.freq(20)
 
 distanceSensor= HCSR04(trigger_pin=7,echo_pin=6)      #radar distance sensor
 
+for i in range(10):
+    lcd.putstr('READY')
+    led.toggle()
+    time.sleep(1)
+    lcd.clear()
 
 #gyro
 mpu = MPU6050(i2c)
-#print(round(mpu.accel.x,2))
-#print(mpu.accel)
-#xd = mpu.sensors
-#print(xd[0].z)
-def TurnDegree(givenDegree):
+def TurnDegree(degree):
+    givenDegree=int(degree)
     print('inside')
-    if givenDegree<0:
+    if givenDegree>0:
         turnRight()
     else:
         turnLeft()
@@ -178,37 +180,46 @@ def drivesTest(timeOfMove):
 # turnLeft(1)
 # turnRight(1)
 # moveStop()
-
 power=15000
+#TurnDegree(90)
+
 moveStop()
-TurnDegree(90)
+#TurnDegree(90)
 #program loop
-for i in range(1000):
-    
-    lcd.move_to(0,0)
-    print("time before: "+str(time.localtime()))
+def ServerLoop():
+    for i in range(1000):
+        
+        lcd.move_to(0,0)
+        print("time before: "+str(time.localtime()))
 
-    response =urequests.get('https://192.168.0.31:44360/robot/info')  
-    
-    print(response.text)
-    lcd.clear()
-    lcd.putstr(str(command))
-    print(str(command))
-    curtime=time.localtime()
-    print("timeafter: "+str(curtime))
-    print(command+"        ")
-    lcd.putstr(str(command)+"       ")
-    if command=="Forward":
-        moveForward(0.5)
-    elif command=="Backward":
-        moveBackward(0.5)
-    elif command=="Left":
-        turnLeft(0.5)
-    elif command=="Right":
-        turnRight(0.5)
-    else:
-        moveStop()
+        response =urequests.get(secrets.APIADRESS)  
+        dataPackage=json.loads(response.text)
+        #command=response.text
+        print(dataPackage)
+        command=dataPackage['command']
+        lcd.clear()
+        lcd.putstr(str(command))
 
+        curtime=time.localtime()
+        print("timeafter: "+str(curtime))
+        print(command+"        ")
+        lcd.putstr(str(command)+"       ")
+
+        if command=="forward":
+            moveForward(3)
+        elif command=="backward":
+            moveBackward(3)
+        elif command=="left":
+            TurnDegree(dataPackage['angle'])
+        elif command=="right":
+            TurnDegree(dataPackage['angle'])
+        elif command=="halfleft":
+            TurnDegree(dataPackage['angle'])
+        elif command=="halfright":
+            TurnDegree(dataPackage['angle'])
+        else:
+            moveStop()
+#ServerLoop()
 
 
 
