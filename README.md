@@ -3,10 +3,10 @@ Project of Raspberry Pi Pico W tracked robot focused on remote steering, detecti
 <br />
 
 Things to do:
--3D printed Body
--Internal power source on 18650 cells
--Remote control via wifi
--Connection Radar to database (?)
+- 3D printed Body -done
+- Internal power source on 18650 cells
+- Remote control via wifi -done
+- Connection Radar-to-database
 
 
 
