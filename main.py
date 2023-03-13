@@ -29,7 +29,7 @@ led = Pin("LED",Pin.OUT)
 i2c=I2C(id=1,scl=Pin(15),sda=Pin(14),freq=400000)       #display
 lcd=I2cLcd(i2c, 0x3f, 2, 16)
 
-
+resetBtn = Pin(16,Pin.IN,Pin.PULL_DOWN)
 
 leftMotorIn1=Pin(12,Pin.OUT)                         #motor driver
 leftMotorIn2=Pin(11,Pin.OUT)
@@ -40,11 +40,12 @@ MotorPwm.freq(20)
 
 distanceSensor= HCSR04(trigger_pin=7,echo_pin=6)      #radar distance sensor
 
-for i in range(10):
-    lcd.putstr('READY')
-    led.toggle()
-    time.sleep(1)
-    lcd.clear()
+def WakeUp():
+    for i in range(10):
+        lcd.putstr('READY')
+        led.toggle()
+        time.sleep(1)
+        lcd.clear()
 
 #gyro
 mpu = MPU6050(i2c)
@@ -85,7 +86,7 @@ def TurnDegree(degree):
 
 radarMeasure= list()
 
-def radar():
+def Radar():
     servoPwm=PWM(Pin(13))                       #radar servo
     servoPwm.freq(50) 
    # i=2500  
@@ -107,7 +108,7 @@ def radar():
 
 
 
-def servoTest():                #between 2500-8500
+def ServoTest():                #between 2500-8500
     servoPwm.duty_u16(1500)
     time.sleep(1)
     servoPwm.duty_u16(8500)
@@ -124,7 +125,7 @@ def servoTest():                #between 2500-8500
         0       0      1   -Fast stop
         1       1      1   -Soft stop   
 """
-def moveBackward(timeOfMove):
+def MoveBackward(timeOfMove):
     MotorPwm.duty_u16(power)
     leftMotorIn1.value(1)
     leftMotorIn2.value(0)
@@ -133,7 +134,7 @@ def moveBackward(timeOfMove):
     time.sleep(timeOfMove)
     moveStop()
 
-def moveForward(timeOfMove):
+def MoveForward(timeOfMove):
     MotorPwm.duty_u16(power)
     leftMotorIn1.value(0)
     leftMotorIn2.value(1)
@@ -144,14 +145,14 @@ def moveForward(timeOfMove):
     
 
 
-def turnLeft():
+def TurnLeft():
     MotorPwm.duty_u16(power)
     leftMotorIn1.value(1)
     leftMotorIn2.value(0)
     rightMotorIn1(0)
     rightMotorIn2(1)
     
-def turnRight():
+def TurnRight():
     MotorPwm.duty_u16(power)
     rightMotorIn1.value(1)
     rightMotorIn2.value(0)
@@ -159,20 +160,27 @@ def turnRight():
     leftMotorIn2(1)   
     
 
-def moveStop():
+def MoveStop():
     leftMotorIn1.value(0)
     leftMotorIn2.value(0)
     rightMotorIn1.value(0)
     rightMotorIn2.value(0)
 
 
-def drivesTest(timeOfMove):
+def DrivesTest(timeOfMove):
     MotorPwm.duty_u16(power)
     moveForward(timeOfMove)
     moveBackward(timeOfMove)  
     turnLeft(timeOfMove)
     turnRight(timeOfMove)
     
+def Interruption(resetBtn):
+    MoveStop()
+    lcd.putstr('RESETING BOARD')
+    print('RESET')
+    machine.reset()
+
+resetBtn.irq(trigger=Pin.IRQ_RISING,handler=Interruption)
 
 # power = 15000
 # moveForward(1)
@@ -183,7 +191,7 @@ def drivesTest(timeOfMove):
 power=15000
 #TurnDegree(90)
 
-moveStop()
+MoveStop()
 #TurnDegree(90)
 #program loop
 def ServerLoop():
@@ -221,5 +229,10 @@ def ServerLoop():
             moveStop()
 #ServerLoop()
 
+WakeUp()
 
+for i in range(10):
+    lcd.putstr('waiting')
+    time.sleep(0.5)
+    lcd.clear()
 
