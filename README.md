@@ -7,6 +7,7 @@ Things to do:
 - Voltage monitoring
 - Connection Radar-to-database
 - Replace prototype cables 
+
 Done:
 - Emergency reset button
 - Remote control via requests-done
