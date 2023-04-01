@@ -14,12 +14,18 @@ import ntptime
 import urequest
 import json
 import secrets
+import rp2
+import socket
 #import urequests
 #ctrl+shift+p select debugger
 
-  
+rp2.country('PL')
+
 sta_if = network.WLAN(network.STA_IF)           #network connection
+sta_if.config(pm = 0xa11140)
+#print(str(sta_if.config(pm = 0xa11140)))
 sta_if.active(True)
+
 sta_if.connect(secrets.SSID,secrets.PASSWORD)
 print(sta_if.isconnected())
 print(sta_if.ifconfig())
@@ -29,7 +35,7 @@ led = Pin("LED",Pin.OUT)
 i2c=I2C(id=1,scl=Pin(15),sda=Pin(14),freq=400000)       #display
 lcd=I2cLcd(i2c, 0x3f, 2, 16)
 
-resetBtn = Pin(16,Pin.IN,Pin.PULL_DOWN)
+resetBtn = Pin(2,Pin.IN,Pin.PULL_UP)
 
 leftMotorIn1=Pin(12,Pin.OUT)                         #motor driver
 leftMotorIn2=Pin(11,Pin.OUT)
@@ -41,7 +47,7 @@ MotorPwm.freq(20)
 distanceSensor= HCSR04(trigger_pin=7,echo_pin=6)      #radar distance sensor
 
 def WakeUp():
-    for i in range(10):
+    for i in range(3):
         lcd.putstr('READY')
         led.toggle()
         time.sleep(1)
@@ -53,9 +59,9 @@ def TurnDegree(degree):
     givenDegree=int(degree)
     print('inside')
     if givenDegree>0:
-        turnRight()
+        TurnRight()
     else:
-        turnLeft()
+        TurnLeft()
     print('direction set')
     start = time.time()
     previous_time=time.ticks_ms()
@@ -81,7 +87,7 @@ def TurnDegree(degree):
         print('pretime'+str(previous_time))
         print('angle set')
         
-    moveStop()    
+    MoveStop()    
 
 
 radarMeasure= list()
@@ -132,7 +138,7 @@ def MoveBackward(timeOfMove):
     rightMotorIn1.value(1)
     rightMotorIn2.value(0)
     time.sleep(timeOfMove)
-    moveStop()
+    MoveStop()
 
 def MoveForward(timeOfMove):
     MotorPwm.duty_u16(power)
@@ -141,7 +147,7 @@ def MoveForward(timeOfMove):
     rightMotorIn1.value(0)
     rightMotorIn2.value(1)
     time.sleep(timeOfMove)
-    moveStop()
+    MoveStop()
     
 
 
@@ -180,7 +186,7 @@ def Interruption(resetBtn):
     print('RESET')
     machine.reset()
 
-resetBtn.irq(trigger=Pin.IRQ_RISING,handler=Interruption)
+resetBtn.irq(trigger=Pin.IRQ_FALLING,handler=Interruption)
 
 # power = 15000
 # moveForward(1)
@@ -188,51 +194,51 @@ resetBtn.irq(trigger=Pin.IRQ_RISING,handler=Interruption)
 # turnLeft(1)
 # turnRight(1)
 # moveStop()
-power=15000
+power=25000
 #TurnDegree(90)
 
 MoveStop()
 #TurnDegree(90)
 #program loop
-def ServerLoop():
-    for i in range(1000):
-        
-        lcd.move_to(0,0)
-        print("time before: "+str(time.localtime()))
 
-        response =urequests.get(secrets.APIADRESS)  
-        dataPackage=json.loads(response.text)
-        #command=response.text
-        print(dataPackage)
-        command=dataPackage['command']
-        lcd.clear()
+
+def ServerLoop():
+    for i in range(200):
+        #print("time before: "+str(time.localtime()))
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((f'{secrets.APIADRESS}',30583))
+        s.send(b(f"GET /robot/getcommands HTTP/1.1\r\n Host: {secrets.APIADRESS} \r\n\r\n"))
+        response = s.recv(4096)
+        s.close()
+        body=(response.splitlines()[-1])
+        body.decode('utf8')
+        res=json.loads(body)
+        print(res["command"])
+        command=res["command"]
+        lcd.move_to(0,0)
         lcd.putstr(str(command))
 
-        curtime=time.localtime()
-        print("timeafter: "+str(curtime))
-        print(command+"        ")
-        lcd.putstr(str(command)+"       ")
-
         if command=="forward":
-            moveForward(3)
+            MoveForward(1)
         elif command=="backward":
-            moveBackward(3)
+            MoveBackward(1)
         elif command=="left":
-            TurnDegree(dataPackage['angle'])
+            TurnDegree(res['angle'])
         elif command=="right":
-            TurnDegree(dataPackage['angle'])
+            TurnDegree(res['angle'])
         elif command=="halfleft":
-            TurnDegree(dataPackage['angle'])
+            TurnDegree(res['angle'])
         elif command=="halfright":
-            TurnDegree(dataPackage['angle'])
+            TurnDegree(res['angle'])
         else:
-            moveStop()
-#ServerLoop()
-
+            MoveStop()
 WakeUp()
+ServerLoop()
 
-for i in range(10):
-    lcd.putstr('waiting')
-    time.sleep(0.5)
-    lcd.clear()
+
+
+# for i in range(10):
+#     lcd.putstr('waiting')
+#     time.sleep(0.5)
+#     lcd.clear()
 
