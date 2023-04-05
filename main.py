@@ -4,19 +4,13 @@ from pico_i2c_lcd import I2cLcd   #https://github.com/T-622/RPI-PICO-I2C-LCD
 from hcsr04 import HCSR04    #https://github.com/gamegine/HCSR04-ultrasonic-sensor-lib
 from imu import MPU6050
 import time
-try:
-    from pico_i2c_lcd import I2cLcd
-except:
-    from pico_i2c_lcd import I2cLcd  
 import network                  #https://docs.micropython.org/en/latest/esp8266/tutorial/network_basics.html
-import urequests
 import ntptime
 import urequest
 import json
 import secrets
-import rp2
 import socket
-#import urequests
+
 #ctrl+shift+p select debugger
 
 rp2.country('PL')
@@ -90,28 +84,31 @@ def TurnDegree(degree):
     MoveStop()    
 
 
-radarMeasure= list()
 
-def Radar():
+
+def RadarScan():
+    radarData= list()
     servoPwm=PWM(Pin(13))                       #radar servo
     servoPwm.freq(50) 
    # i=2500  
     for i in range(2000,8500,500):              #mid = 5250
         radarDistance=distanceSensor.distance_cm()
         lcd.putstr(str(radarDistance))
-        radarMeasure.append(radarDistance)
+        radarData.append(radarDistance)
         servoPwm.duty_u16(i)
         time.sleep(0.5)
         lcd.clear()
-    servoPwm.duty_u16(2000)
+    servoPwm.duty_u16(2000)#not leaving servo in edge position
     time.sleep(1)
     servoPwm.deinit()
     lcd.clear()
-    direction = radarMeasure.index(max(radarMeasure)) 
-    print(direction)
-    return(direction)
-    
+    #irection = radarData.index(max(radarData)) 
+    print(radarData)
 
+    return(radarData)
+    
+def RadarGetDirection(data):
+    return(radarData.index(max(radarData)))
 
 
 def ServoTest():                #between 2500-8500
@@ -201,13 +198,34 @@ MoveStop()
 #TurnDegree(90)
 #program loop
 
+def ApiPostRadarData(scanValues):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    #scanValuestest=[2,1,3,7]
+    #print(json.dumps(scanValuestest).encode('utf8'))
+    msg=json.dumps(scanValues).encode('utf8')
+    dataLen=len(msg) 
+    print(msg)
+    print(dataLen)
+    requestHeaders= f"POST /robot/radarData HTTP/1.1\r\nHost: {secrets.APIADRESS}\r\nContent-Length: {dataLen}\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n"
+    requestBody=msg
+    s.connect((f'{secrets.APIADRESS}',30583))
+    #s.send((f"POST /robot/radarData HTTP/1.1\r\nHost: {secrets.APIADRESS}\r\nContent-Length:{str(dataLen)}\r\nContent-Type:application/json\r\nConnection:close\r\n\r\n {msg}\r\n"))
+    s.send(requestHeaders.encode('utf8')+requestBody+b'\r\n')
+    response = s.recv(4096)
+    print(response)
+    s.close()
 
-def ServerLoop():
-    for i in range(200):
+def RadarTest():
+    for i in range(2):
+        ApiPostRadarData(RadarScan())
+
+
+def ApiGet():
+    for i in range(50):
         #print("time before: "+str(time.localtime()))
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((f'{secrets.APIADRESS}',30583))
-        s.send(b(f"GET /robot/getcommands HTTP/1.1\r\n Host: {secrets.APIADRESS} \r\n\r\n"))
+        s.send((f"GET /robot/getcommands HTTP/1.1\r\n Host: {secrets.APIADRESS} \r\n\r\n"))
         response = s.recv(4096)
         s.close()
         body=(response.splitlines()[-1])
@@ -233,8 +251,8 @@ def ServerLoop():
         else:
             MoveStop()
 WakeUp()
-ServerLoop()
-
+#ApiGet()
+RadarTest()
 
 
 # for i in range(10):
