@@ -37,6 +37,7 @@ rightMotorIn1=Pin(10,Pin.OUT)
 rightMotorIn2=Pin(9,Pin.OUT)
 MotorPwm=PWM(Pin(8))
 MotorPwm.freq(20)
+power=20000
 
 distanceSensor= HCSR04(trigger_pin=7,echo_pin=6)      #radar distance sensor
 
@@ -51,7 +52,6 @@ def WakeUp():
 mpu = MPU6050(i2c)
 def TurnDegree(degree):
     givenDegree=int(degree)
-    print('inside')
     if givenDegree>0:
         TurnRight()
     else:
@@ -61,10 +61,7 @@ def TurnDegree(degree):
     previous_time=time.ticks_ms()
     current_angle=0.0
     time_class=machine.RTC()
-    print('before loop')
-    print()
     while (abs(current_angle)<abs(givenDegree)):
-        print('in loop')
         print('next----------')
         sample = mpu.gyro.z
         print('sample'+str(sample))
@@ -79,8 +76,7 @@ def TurnDegree(degree):
         print('angle'+str(current_angle))
         previous_time=time_sample
         print('pretime'+str(previous_time))
-        print('angle set')
-        
+        print('angle set')       
     MoveStop()    
 
 
@@ -128,23 +124,20 @@ def ServoTest():                #between 2500-8500
         0       0      1   -Fast stop
         1       1      1   -Soft stop   
 """
-def MoveBackward(timeOfMove):
+def MoveBackward():
     MotorPwm.duty_u16(power)
     leftMotorIn1.value(1)
     leftMotorIn2.value(0)
     rightMotorIn1.value(1)
     rightMotorIn2.value(0)
-    time.sleep(timeOfMove)
-    MoveStop()
 
-def MoveForward(timeOfMove):
+def MoveForward():
     MotorPwm.duty_u16(power)
     leftMotorIn1.value(0)
     leftMotorIn2.value(1)
     rightMotorIn1.value(0)
     rightMotorIn2.value(1)
-    time.sleep(timeOfMove)
-    MoveStop()
+
     
 
 
@@ -185,18 +178,8 @@ def Interruption(resetBtn):
 
 resetBtn.irq(trigger=Pin.IRQ_FALLING,handler=Interruption)
 
-# power = 15000
-# moveForward(1)
-# moveBackward(1)
-# turnLeft(1)
-# turnRight(1)
-# moveStop()
-power=25000
-#TurnDegree(90)
 
-MoveStop()
-#TurnDegree(90)
-#program loop
+
 
 def ApiPostRadarData(scanValues):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -221,7 +204,7 @@ def RadarTest():
 
 
 def ApiGet():
-    for i in range(50):
+    for i in range(200):
         #print("time before: "+str(time.localtime()))
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((f'{secrets.APIADRESS}',30583))
@@ -237,13 +220,15 @@ def ApiGet():
         lcd.putstr(str(command))
 
         if command=="forward":
-            MoveForward(1)
+            MoveForward()
+        elif command=="stop":
+            MoveStop()
         elif command=="backward":
-            MoveBackward(1)
+            MoveBackward()
         elif command=="left":
-            TurnDegree(res['angle'])
+            TurnLeft()
         elif command=="right":
-            TurnDegree(res['angle'])
+            TurnRight()
         elif command=="halfleft":
             TurnDegree(res['angle'])
         elif command=="halfright":
@@ -251,8 +236,10 @@ def ApiGet():
         else:
             MoveStop()
 WakeUp()
-#ApiGet()
-RadarTest()
+MoveStop()
+ApiGet()
+MoveStop()
+#RadarTest()
 
 
 # for i in range(10):
