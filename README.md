@@ -14,6 +14,7 @@ Project of Raspberry Pi Pico W tracked robot focused on remote steering, camera 
 # How it works
 Robot is controlled via [frontend app](https://github.com/MarcinD12/RobotControl) that posts command to [api](https://github.com/MarcinD12/RobotApi) and robot repedately sends GET request to api to get command. Robot can scan environment in 180° radius and pick direction with furthest distance to obstacle. It is able to turn with desired angle (about 80% precision) thanks to gyroscope.
 ESP32cam provides video stream in 320x240 resolution. In further update provided video will be used for detecting objects. Prototype of Machine Learning model was trained using ML.NET and Azure ML experiment.
+##
 ![image](https://github.com/MarcinD12/TrackedRobot/assets/111440372/bfa57d74-4055-4e76-9df6-dcf26014f1f9)
 
 Things to do:
