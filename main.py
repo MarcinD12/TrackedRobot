@@ -40,6 +40,54 @@ MotorPwm.freq(20)
 power=20000
 
 distanceSensor= HCSR04(trigger_pin=7,echo_pin=6)      #radar distance sensor
+while True:
+    response=ApiGet()
+    print (response)
+    mode = response["mode"]
+    if mode=="idle":
+        lcd.putstr("IDLE")
+        time.sleep(0.5)
+    elif mode=="step":
+        MoveSteps(response)
+    elif mode =="movesmooth":
+        MoveSmooth(response)
+    elif mode=="radarscan":
+        ApiPostRadarData(RadarScan()) 
+
+
+
+def MoveSteps(response):
+    command=response["command"]
+    if command=="forward":
+        MoveForward()
+        time.sleep(2)
+        MoveStop()
+    elif command=="backward":
+        TurnDegree(180)
+        time.sleep(2)
+        MoveStop()
+    elif command=="left":
+        TurnDegree(-90)
+    elif command=="right":
+        TurnDegree(90)
+    elif command=="halfleft":
+        TurnDegree(res['angle'])
+    elif command=="halfright":
+        TurnDegree(res['angle'])
+    
+def MoveSmooth(response):    
+    direction = response["command"]
+    if direction=="forward":
+        MoveForward()
+    elif direction=="backward":
+        MoveBackward()
+    elif direction=="left":
+        TurnLeft()
+    elif direction =="right":
+        TurnRight()
+    else:
+        MoveStop()
+
 
 def WakeUp():
     for i in range(3):
@@ -183,8 +231,7 @@ resetBtn.irq(trigger=Pin.IRQ_FALLING,handler=Interruption)
 
 def ApiPostRadarData(scanValues):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #scanValuestest=[2,1,3,7]
-    #print(json.dumps(scanValuestest).encode('utf8'))
+
     msg=json.dumps(scanValues).encode('utf8')
     dataLen=len(msg) 
     print(msg)
@@ -214,31 +261,29 @@ def ApiGet():
         body=(response.splitlines()[-1])
         body.decode('utf8')
         res=json.loads(body)
-        print(res["command"])
-        command=res["command"]
-        lcd.move_to(0,0)
-        lcd.putstr(str(command))
+        return res
+        # print(res["command"])
+        # command=res["command"]
+        # lcd.move_to(0,0)
+        # lcd.putstr(str(command))
 
-        if command=="forward":
-            MoveForward()
-        elif command=="stop":
-            MoveStop()
-        elif command=="backward":
-            MoveBackward()
-        elif command=="left":
-            TurnLeft()
-        elif command=="right":
-            TurnRight()
-        elif command=="halfleft":
-            TurnDegree(res['angle'])
-        elif command=="halfright":
-            TurnDegree(res['angle'])
-        else:
-            MoveStop()
-WakeUp()
-MoveStop()
-ApiGet()
-MoveStop()
+        # if command=="forward":
+        #     MoveForward()
+        # elif command=="stop":
+        #     MoveStop()
+        # elif command=="backward":
+        #     MoveBackward()
+        # elif command=="left":
+        #     TurnLeft()
+        # elif command=="right":
+        #     TurnRight()
+        # elif command=="halfleft":
+        #     TurnDegree(res['angle'])
+        # elif command=="halfright":
+        #     TurnDegree(res['angle'])
+        # else:
+        #     MoveStop()
+
 #RadarTest()
 
 
