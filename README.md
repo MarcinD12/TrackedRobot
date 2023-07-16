@@ -17,21 +17,28 @@ ESP32cam provides video stream in 320x240 resolution. In further update provided
 ##
 ![image](https://github.com/MarcinD12/TrackedRobot/assets/111440372/bfa57d74-4055-4e76-9df6-dcf26014f1f9)
 
-Things to do:
+ (sample of object detection)
+
+![image](https://github.com/MarcinD12/TrackedRobot/assets/111440372/ba73de6e-e414-4005-958b-2d58e00ea18d)
+
+ (UI and stream)
+
+**Things to do:**
 - Add gripper 
 - Implement ML model
-- Embed video to front app 
 - Modes like 'autonomous drive', 'area scanning'
 - Voltage monitoring
 - Save data in database
 - Replace prototype cables 
 - Improve onboard voltage converter
+- containerize app for easier startup
+- Emergency reset button
 
-Done:
+**Done:**
+- Embed video to front app (for now it works with workaround with tunneling stream using ngrok)
 - Stream video
 - POST data from radar
 - Trained ML model
-- Emergency reset button
 - Remote control via requests
 - 3D printed Body-done (need improvement)
 - Internal power source on 18650 cells
