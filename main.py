@@ -24,7 +24,6 @@ sta_if.connect(secrets.SSID,secrets.PASSWORD)
 print(sta_if.isconnected())
 print(sta_if.ifconfig())
 
-
 led = Pin("LED",Pin.OUT)
 i2c=I2C(id=1,scl=Pin(15),sda=Pin(14),freq=400000)       #display
 lcd=I2cLcd(i2c, 0x3f, 2, 16)
@@ -47,14 +46,16 @@ while True:
     if mode=="idle":
         lcd.putstr("IDLE")
         time.sleep(0.5)
-    elif mode=="step":
+    elif mode=="movestep":
         MoveSteps(response)
     elif mode =="movesmooth":
         MoveSmooth(response)
     elif mode=="radarscan":
         ApiPostRadarData(RadarScan()) 
-
-
+    elif mode =="avoidobstacles":
+        continue      
+    else:
+        MoveStop()
 
 def MoveSteps(response):
     command=response["command"]
@@ -88,6 +89,21 @@ def MoveSmooth(response):
     else:
         MoveStop()
 
+def AvoidObstacles():
+    radarData=radarScan()
+    direction = radarData.index(max(RadarScan())) 
+    for x in range (2):
+        if sum(radarData)/len(radarData)>100:
+            break
+        elif x==2:
+            MoveBackward()
+            time.sleep(2)
+            TurnDegree(-direction)
+            return
+    TurnDegree(direction)
+    moveForward()
+    time.sleep(2)
+    MoveStop()
 
 def WakeUp():
     for i in range(3):
@@ -96,7 +112,7 @@ def WakeUp():
         time.sleep(1)
         lcd.clear()
 
-#gyro
+
 mpu = MPU6050(i2c)
 def TurnDegree(degree):
     givenDegree=int(degree)
@@ -127,9 +143,6 @@ def TurnDegree(degree):
         print('angle set')       
     MoveStop()    
 
-
-
-
 def RadarScan():
     radarData= list()
     servoPwm=PWM(Pin(13))                       #radar servo
@@ -148,12 +161,10 @@ def RadarScan():
     lcd.clear()
     #irection = radarData.index(max(radarData)) 
     print(radarData)
-
     return(radarData)
     
 def RadarGetDirection(data):
     return(radarData.index(max(radarData)))
-
 
 def ServoTest():                #between 2500-8500
     servoPwm.duty_u16(1500)
@@ -161,9 +172,6 @@ def ServoTest():                #between 2500-8500
     servoPwm.duty_u16(8500)
     time.sleep(1)
     servoPwm.deinit()
-
-
-
 
 """     Motor steering:
         IN1    IN2    PWM   
@@ -186,9 +194,6 @@ def MoveForward():
     rightMotorIn1.value(0)
     rightMotorIn2.value(1)
 
-    
-
-
 def TurnLeft():
     MotorPwm.duty_u16(power)
     leftMotorIn1.value(1)
@@ -203,13 +208,11 @@ def TurnRight():
     leftMotorIn1(0)
     leftMotorIn2(1)   
     
-
 def MoveStop():
     leftMotorIn1.value(0)
     leftMotorIn2.value(0)
     rightMotorIn1.value(0)
     rightMotorIn2.value(0)
-
 
 def DrivesTest(timeOfMove):
     MotorPwm.duty_u16(power)
@@ -226,9 +229,6 @@ def Interruption(resetBtn):
 
 resetBtn.irq(trigger=Pin.IRQ_FALLING,handler=Interruption)
 
-
-
-
 def ApiPostRadarData(scanValues):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -239,7 +239,6 @@ def ApiPostRadarData(scanValues):
     requestHeaders= f"POST /robot/radarData HTTP/1.1\r\nHost: {secrets.APIADRESS}\r\nContent-Length: {dataLen}\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n"
     requestBody=msg
     s.connect((f'{secrets.APIADRESS}',30583))
-    #s.send((f"POST /robot/radarData HTTP/1.1\r\nHost: {secrets.APIADRESS}\r\nContent-Length:{str(dataLen)}\r\nContent-Type:application/json\r\nConnection:close\r\n\r\n {msg}\r\n"))
     s.send(requestHeaders.encode('utf8')+requestBody+b'\r\n')
     response = s.recv(4096)
     print(response)
@@ -249,10 +248,8 @@ def RadarTest():
     for i in range(2):
         ApiPostRadarData(RadarScan())
 
-
 def ApiGet():
     for i in range(200):
-        #print("time before: "+str(time.localtime()))
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((f'{secrets.APIADRESS}',30583))
         s.send((f"GET /robot/getcommands HTTP/1.1\r\n Host: {secrets.APIADRESS} \r\n\r\n"))
@@ -262,33 +259,4 @@ def ApiGet():
         body.decode('utf8')
         res=json.loads(body)
         return res
-        # print(res["command"])
-        # command=res["command"]
-        # lcd.move_to(0,0)
-        # lcd.putstr(str(command))
-
-        # if command=="forward":
-        #     MoveForward()
-        # elif command=="stop":
-        #     MoveStop()
-        # elif command=="backward":
-        #     MoveBackward()
-        # elif command=="left":
-        #     TurnLeft()
-        # elif command=="right":
-        #     TurnRight()
-        # elif command=="halfleft":
-        #     TurnDegree(res['angle'])
-        # elif command=="halfright":
-        #     TurnDegree(res['angle'])
-        # else:
-        #     MoveStop()
-
-#RadarTest()
-
-
-# for i in range(10):
-#     lcd.putstr('waiting')
-#     time.sleep(0.5)
-#     lcd.clear()
 
